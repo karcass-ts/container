@@ -1,3 +1,4 @@
-src
-.eslintrc.json
-lib/*.test.js
+*
+!lib/*
+!package.json
+!README.md

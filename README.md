@@ -1,6 +1,6 @@
 # @karcass/container
 
-Very tiny and simple IoC container used in karcass skeleton
+Very tiny and simple IoC container used in <a href="https://github.com/karcass-ts/karcass">karcass</a> skeleton
 
 # Installation
 
