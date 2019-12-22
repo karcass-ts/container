@@ -86,8 +86,8 @@ Hello, Alice!
 
 # Available methods
 
-* add(constructor, initializer): void
-* addInplace(constructor, initializer): Promise<instanceof constructor>
-* get(constructor): Promise<instanceof constructor>
-* getAll(): Promise<Array&lt;instanceof constructor&gt;>
-* getConstructors(): Array&lt;constructor&gt;
+* `add<T>(key: costructor | string, initializer: () => T | Promise<T>): void`;
+* `addInplace<T>(key: consructor | string, initializer: () => T | Promise<T>): Promise<T>`;
+* `get<T>(key: constructor | string): Promise<T>`;
+* `getAll(): Promise<T[]>`;
+* `getKeys(): (string | constructor)[]`.

@@ -63,3 +63,8 @@ it('Must throw not found error', async () => {
     }
     assert.fail('Error not throwed')
 })
+it('Access by string key must be available', async () => {
+    container.add('somekey', () => 'somevalue')
+    const val = await container.get('somekey')
+    assert(val === 'somevalue')
+})
