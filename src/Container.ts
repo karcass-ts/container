@@ -2,24 +2,24 @@ export class Container<ItemType extends any> {
 
     protected items: Record<string, {
         constructor: new (...args: any[]) => ItemType,
-        initializer: () => ItemType,
+        initializer: () => ItemType|Promise<ItemType>,
         instance?: any,
         initializationsCount: number
     }> = {}
 
-    public add<T extends ItemType>(constructor: new (...args: any[]) => T, initializer: () => T) {
+    public add<T extends ItemType>(constructor: new (...args: any[]) => T, initializer: () => T|Promise<T>) {
         if (constructor.name in this.items) {
             throw new Error(`Constructor with name "${constructor.name}" already added before`)
         }
         this.items[constructor.name] = { constructor, initializer, initializationsCount: 0 }
     }
 
-    public addInplace<T extends ItemType>(constructor: new (...args: any[]) => T, initializer: () => T) {
+    public async addInplace<T extends ItemType>(constructor: new (...args: any[]) => T, initializer: () => T|Promise<T>): Promise<T> {
         this.add(constructor, initializer)
-        this.get(constructor)
+        return this.get(constructor)
     }
 
-    public get<T extends ItemType>(constructor: new (...args: any[]) => T): T {
+    public async get<T extends ItemType>(constructor: new (...args: any[]) => T): Promise<T> {
         const item = this.items[constructor.name]
         if (!item) {
             throw new Error(`Item with key "${constructor.name}" not found`)
@@ -29,15 +29,15 @@ export class Container<ItemType extends any> {
                 throw new Error(`Circular dependency in ${constructor.name} initializer detected`)
             }
             item.initializationsCount++
-            item.instance = item.initializer()
+            item.instance = await item.initializer()
         }
         return item.instance
     }
 
-    public getAll() {
+    public async getAll() {
         const result: ItemType[] = []
         for (const item of Object.values(this.items)) {
-            result.push(this.get(item.constructor))
+            result.push(await this.get(item.constructor))
         }
         return result
     }

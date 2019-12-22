@@ -1,6 +1,6 @@
 # @karcass/container
 
-Very tiny and simple IoC container used in <a href="https://github.com/karcass-ts/karcass">karcass</a> skeleton
+Very tiny and simple async IoC container used in <a href="https://github.com/karcass-ts/karcass">karcass</a> skeleton
 
 # Installation
 
@@ -31,8 +31,8 @@ class DummyClass {}
 
 const container = new Container()
 
-container.add(HelloWorldMessagePrinter, () => {
-    const logger = container.get(ConsoleLogger)
+container.add(HelloWorldMessagePrinter, async () => {
+    const logger = await container.get(ConsoleLogger)
     console.log('HelloMessagePrinter initialization...')
     return new HelloMessagePrinter(logger)
 })
@@ -42,9 +42,10 @@ container.add(ConsoleLogger, () => {
 }
 container.add(DummyClass, () => {
     console.log('DummyClass initialization...')
+    return new DummyClass()
 })
 
-container.get(HelloMessagePrinter).print('Alice')
+container.get(HelloMessagePrinter).then(printer => printer.print('Alice'))
 ```
 
 This example will print:
@@ -85,8 +86,8 @@ Hello, Alice!
 
 # Available methods
 
-* add(constructor, initializer)
-* addInplace(constructor, initializer)
-* get(constructor): instanceof constructor
-* getAll(): Array&lt;instanceof constructor&gt;
+* add(constructor, initializer): void
+* addInplace(constructor, initializer): Promise<instanceof constructor>
+* get(constructor): Promise<instanceof constructor>
+* getAll(): Promise<Array&lt;instanceof constructor&gt;>
 * getConstructors(): Array&lt;constructor&gt;

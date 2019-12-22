@@ -24,16 +24,16 @@ class NeverClass {}
 
 const container = new Container()
 it('Order must be empty', () => {
-    container.add(MasterClass, () => new MasterClass(container.get(SlaveClass)))
+    container.add(MasterClass, async () => new MasterClass(await container.get(SlaveClass)))
     container.add(SlaveClass, () => new SlaveClass())
     assert.deepEqual(records, [])
 })
-it(`Order must be ${SlaveClass.name}, ${MasterClass.name}`, () => {
-    container.get(MasterClass)
+it(`Order must be ${SlaveClass.name}, ${MasterClass.name}`, async () => {
+    await container.get(MasterClass)
     assert.deepEqual(records, [SlaveClass.name, MasterClass.name])
 })
-it('Must equals for 10', () => {
-    assert.equal(container.get(MasterClass).getTen(), 10)
+it('Must equals for 10', async () => {
+    assert.equal((await container.get(MasterClass)).getTen(), 10)
 })
 it(`Initialization order must be ${InlineClass.name}`, () => {
     records = []
@@ -41,22 +41,22 @@ it(`Initialization order must be ${InlineClass.name}`, () => {
     container.addInplace(InlineClass, () => new InlineClass())
     assert.deepEqual(records, [InlineClass.name])
 })
-it('Must throw circular dependency error', () => {
+it('Must throw circular dependency error', async () => {
     class LeftSide { public constructor(protected rightSide: RightSide) {} }
     class RightSide { public constructor(protected leftSide: LeftSide) {} }
-    container.add(LeftSide, () => new LeftSide(container.get(RightSide)))
-    container.add(RightSide, () => new RightSide(container.get(LeftSide)))
+    container.add(LeftSide, async () => new LeftSide(await container.get(RightSide)))
+    container.add(RightSide, async () => new RightSide(await container.get(LeftSide)))
     try {
-        container.get(LeftSide)
+        await container.get(LeftSide)
     } catch (err) {
         assert(err.message.indexOf('detected'))
         return
     }
     assert.fail('Error not throwed')
 })
-it('Must throw not found error', () => {
+it('Must throw not found error', async () => {
     try {
-        container.get(NeverClass)
+        await container.get(NeverClass)
     } catch (err) {
         assert(err.message.indexOf('NeverClass'))
         return
