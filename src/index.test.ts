@@ -22,7 +22,7 @@ class SlaveClass {
 class InlineClass { public constructor() { records.push(this.constructor.name) } }
 class NeverClass {}
 
-const container = new Container()
+const container = new Container(1000)
 it('Order must be empty', () => {
     container.add(MasterClass, async () => {
         await new Promise(resolve => setTimeout(resolve, 100))
@@ -58,7 +58,8 @@ it('Must throw circular dependency error async', async () => {
     try {
         await container.get(LeftSide)
     } catch (err) {
-        assert(err.message.indexOf('Circular dependency') >= 0)
+        console.log(err.message)
+        assert(err.message.indexOf('circular dependency') >= 0)
         return
     }
     assert.fail('Error not throwed')

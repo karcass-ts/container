@@ -1,18 +1,59 @@
-export class Container<ItemType extends any> {
+class ContainerItem<T> {
+    public instance?: any
+    public initializationStartTimestamp?: number
 
-    protected items: Record<string, {
-        key: (new (...args: any[]) => ItemType)|string,
-        initializer: () => ItemType|Promise<ItemType>,
-        instance?: any,
-        initializersCallStack: string[],
-    }> = {}
+    public constructor(
+        public key: (new (...args: any[]) => T)|string,
+        public initializer: () => T|Promise<T>,
+    ) {}
+
+    public get initializationDuration() {
+        return this.initializationStartTimestamp ? Date.now() - this.initializationStartTimestamp : 0
+    }
+
+    public get name() {
+        return typeof this.key === 'string' ? this.key : this.key.name
+    }
+
+    public async getInstance(maxWaitMs: number, timeoutCallback: () => Error) {
+        if (this.instance !== undefined) {
+            return this.instance
+        }
+        return this.instance = new Promise((resolve, reject) => {
+            try {
+                const obj = this.initializer()
+                if (obj instanceof Promise) {
+                    this.initializationStartTimestamp = Date.now()
+                    const timeout = setTimeout(() => {
+                        reject(timeoutCallback())
+                        this.initializationStartTimestamp = undefined
+                    }, maxWaitMs)
+
+                    obj.then(result => resolve(this.instance = result)).catch(reject).finally(() => {
+                        clearTimeout(timeout)
+                        this.initializationStartTimestamp = undefined
+                    })
+                } else {
+                    resolve(obj)
+                }
+            } catch (err) {
+                reject(err)
+            }
+        })
+    }
+
+}
+export class Container<ItemType extends any> {
+    protected items: ContainerItem<ItemType>[] = []
+
+    public constructor(protected maxItemInitializationDurationMs = 1e4) {}
 
     public add<T extends ItemType>(key: (new (...args: any[]) => T)|string, initializer: () => T|Promise<T>) {
         const name = typeof key === 'string' ? key : key.name
         if (name in this.items) {
             throw new Error(`The item with name "${name}" already added before`)
         }
-        this.items[name] = { key, initializer, initializersCallStack: [] }
+        this.items.push(new ContainerItem(key, initializer))
     }
 
     public async addInplace<T extends ItemType>(key: (new (...args: any[]) => T)|string, initializer: () => T|Promise<T>): Promise<T> {
@@ -22,40 +63,18 @@ export class Container<ItemType extends any> {
 
     public async get<T extends ItemType>(key: (new (...args: any[]) => T)|string): Promise<T> {
         const name = typeof key === 'string' ? key : key.name
-        const item = this.items[name]
+        const item = this.items.find(i => i.name === name)
         if (!item) {
             throw new Error(`Item with key "${name}" not found`)
         }
-        const checkRecursion = () => {
-            const stack = new Error().stack
-            if (!stack) {
-                throw new Error('Unable to receive callstack')
+        return item.getInstance(this.maxItemInitializationDurationMs, () => {
+            const problems = this.items.filter(i => i.initializationDuration >= this.maxItemInitializationDurationMs * .9)
+            let message = `Too long ${name} initialization (> ${this.maxItemInitializationDurationMs}ms). `
+            if (problems.length >= 2) {
+                message += `It may be circular dependency between ${problems.map(p => p.name).join(' and ')}`
             }
-            for (const line of stack.split('\n').filter(line => line.indexOf('at Object.initializer') >= 0)) {
-                const recursive = Object.values(this.items).find(otherItem => {
-                    if (otherItem === item) {
-                        return false
-                    }
-                    return otherItem.initializersCallStack.find(l => l === line)
-                })
-                if (recursive) {
-                    const recName = typeof recursive.key === 'string' ? recursive.key : recursive.key.name
-                    throw new Error(`Circular dependency ${recName} <==> ${name} detected`)
-                }
-                item.initializersCallStack.push(line)
-            }
-        }
-        if (!item.instance) {
-            checkRecursion()
-            item.instance = item.initializer()
-            if (item.instance instanceof Promise) {
-                item.instance.then(result => item.instance = result).catch(() => item.instance = undefined)
-            }
-        }
-        if (item.instance instanceof Promise) {
-            checkRecursion()
-        }
-        return item.instance
+            return new Error(message)
+        })
     }
 
     public async getAll() {
