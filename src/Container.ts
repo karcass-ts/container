@@ -31,7 +31,10 @@ export class Container<ItemType extends any> {
                 throw new Error(`Circular dependency in ${name} initializer detected`)
             }
             item.initializationsCount++
-            item.instance = await item.initializer()
+            item.instance = item.initializer()
+        }
+        if (item.instance instanceof Promise) {
+            item.instance = await item.instance
         }
         return item.instance
     }
