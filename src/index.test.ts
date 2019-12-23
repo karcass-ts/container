@@ -24,11 +24,17 @@ class NeverClass {}
 
 const container = new Container()
 it('Order must be empty', () => {
-    container.add(MasterClass, async () => new MasterClass(await container.get(SlaveClass)))
+    container.add(MasterClass, async () => {
+        await new Promise(resolve => setTimeout(resolve, 100))
+        return new MasterClass(await container.get(SlaveClass))
+    })
     container.add(SlaveClass, () => new SlaveClass())
     assert.deepEqual(records, [])
 })
 it(`Order must be ${SlaveClass.name}, ${MasterClass.name}`, async () => {
+    container.get(MasterClass)
+    container.get(MasterClass)
+    container.get(MasterClass)
     await container.get(MasterClass)
     assert.deepEqual(records, [SlaveClass.name, MasterClass.name])
 })
@@ -41,15 +47,18 @@ it(`Initialization order must be ${InlineClass.name}`, () => {
     container.addInplace(InlineClass, () => new InlineClass())
     assert.deepEqual(records, [InlineClass.name])
 })
-it('Must throw circular dependency error', async () => {
+it('Must throw circular dependency error async', async () => {
     class LeftSide { public constructor(protected rightSide: RightSide) {} }
     class RightSide { public constructor(protected leftSide: LeftSide) {} }
-    container.add(LeftSide, async () => new LeftSide(await container.get(RightSide)))
+    container.add(LeftSide, async () => {
+        await new Promise(resolve => setTimeout(resolve, 10))
+        return new LeftSide(await container.get(RightSide))
+    })
     container.add(RightSide, async () => new RightSide(await container.get(LeftSide)))
     try {
         await container.get(LeftSide)
     } catch (err) {
-        assert(err.message.indexOf('detected'))
+        assert(err.message.indexOf('Circular dependency') >= 0)
         return
     }
     assert.fail('Error not throwed')
