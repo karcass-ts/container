@@ -1,6 +1,6 @@
 {
   "name": "@karcass/container",
-  "version": "0.0.12",
+  "version": "0.1.0",
   "description": "Simple IoC container",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -35,5 +35,8 @@
     "eslint": "^6.7.2",
     "mocha": "^6.2.2",
     "typescript": "^3.7.3"
+  },
+  "dependencies": {
+    "reflect-metadata": "^0.1.13"
   }
 }

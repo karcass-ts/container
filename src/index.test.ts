@@ -1,5 +1,6 @@
 import { Container } from './Container'
 import assert from 'assert'
+import { Dependency } from './Dependency'
 
 let records: string[] = []
 
@@ -77,4 +78,26 @@ it('Access by string key must be available', async () => {
     container.add('somekey', () => 'somevalue')
     const val = await container.get('somekey')
     assert(val === 'somevalue')
+})
+it('Must must work ok with DI', async () => {
+    const diContainer = new Container()
+    class DiClass1 { protected val = 'dsd' }
+    class TrueReturner { public get = () => true }
+    class DiClass2 {
+        public constructor(@Dependency(DiClass1) diClass1: DiClass1,
+            @Dependency(TrueReturner) protected trueReturner: TrueReturner,
+        ) {
+            if (!(diClass1 instanceof DiClass1)) {
+                throw new Error('diClass1 is not instance of DiClass1')
+            }
+        }
+        public getTrue() {
+            return this.trueReturner.get()
+        }
+    }
+    diContainer.add(DiClass1)
+    diContainer.add(DiClass2)
+    diContainer.add(TrueReturner)
+    const diClass2 = await diContainer.get(DiClass2)
+    assert(diClass2.getTrue())
 })

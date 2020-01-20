@@ -1,6 +1,7 @@
 # @karcass/container
 
-Very tiny and simple async IoC container used in <a href="https://github.com/karcass-ts/karcass">karcass</a> skeleton
+Very tiny and simple async IoC container with dependency injection support
+used in <a href="https://github.com/karcass-ts/karcass">karcass</a> skeleton
 
 # Installation
 
@@ -84,10 +85,38 @@ HelloMessagePrinter initialization...
 Hello, Alice!
 ```
 
+You can use dependency injection instead of service construction by hands:
+
+```typescript
+import { Container, Dependency } from '@karcass/container'
+
+class FirstClass {}
+
+class SecondClass {
+    public constructor(@Dependency(FirstClass) firstClassInstance: FirstClass) {
+        console.log(`${firstClassInstance.constructor.name} loaded`)
+    }
+}
+
+const container = new Container()
+container.add(FirstClass)
+await container.addInplace(SecondClass)
+```
+
+Feel free to use text keys for services:
+
+```typescript
+/* ... */
+public constructor(@Dependency('first-class') firstClassInstance: FirstClass) {
+/* ... */
+container.add('first-class', () => new FirstClass())
+await container.addInplace(SecondClass)
+```
+
 # Available methods
 
-* `add<T>(key: costructor | string, initializer: () => T | Promise<T>): void`;
-* `addInplace<T>(key: consructor | string, initializer: () => T | Promise<T>): Promise<T>`;
+* `add<T>(key: costructor | string, initializer?: () => T | Promise<T>): void`;
+* `addInplace<T>(key: consructor | string, initializer?: () => T | Promise<T>): Promise<T>`;
 * `get<T>(key: constructor | string): Promise<T>`;
 * `getAll(): Promise<T[]>`;
 * `getKeys(): (string | constructor)[]`.
