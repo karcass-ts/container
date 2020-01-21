@@ -103,6 +103,12 @@ container.add(FirstClass)
 await container.addInplace(SecondClass)
 ```
 
+Or you can just create instance of SecondClass using `inject` method, which creates instance of constructor and injects corresponding dependencies. This method doesn't perform addition of created object into self (container's) index:
+
+```typescript
+const secondClassInstance = await container.inject(SecondClass)
+```
+
 Feel free to use text keys for services:
 
 ```typescript

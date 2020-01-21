@@ -60,11 +60,7 @@ export class Container<ItemType extends any> {
             if (!(key instanceof Function)) {
                 throw new Error('If second parameter omitted, first parameter must be a constructor')
             }
-            const dependencies: string[]|undefined = Reflect.getMetadata(dependenciesKeyName, key)
-            initializer = async () => {
-                const args = dependencies ? await Promise.all(dependencies.reverse().map(k => this.get(k))) : []
-                return new key(...args)
-            }
+            initializer = () => this.inject(key)
         }
         const name = typeof key === 'string' ? key : key.name
         if (name in this.items) {
@@ -87,6 +83,17 @@ export class Container<ItemType extends any> {
             this.add(key)
         }
         return this.get<T>(key)
+    }
+
+    /**
+     * Creates instance of constructor and injects corresponding dependencies. This method doesn't perform addition of created object
+     * into self index
+     * @param constructor
+     */
+    public async inject<T>(constructor: new (...args: any[]) => T): Promise<T> {
+        const dependencies: string[]|undefined = Reflect.getMetadata(dependenciesKeyName, constructor)
+        const args = dependencies ? await Promise.all(dependencies.reverse().map(k => this.get(k))) : []
+        return new constructor(...args)
     }
 
     public async get<T extends ItemType>(key: (new (...args: any[]) => T)|string): Promise<T> {
