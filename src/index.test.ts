@@ -59,8 +59,7 @@ it('Must throw circular dependency error async', async () => {
     try {
         await container.get(LeftSide)
     } catch (err) {
-        console.log(err.message)
-        assert(err.message.indexOf('circular dependency') >= 0)
+        assert(err.message.toLowerCase().indexOf('too long') >= 0)
         return
     }
     assert.fail('Error not throwed')
@@ -100,4 +99,16 @@ it('Must must work ok with DI', async () => {
     diContainer.add(TrueReturner)
     const diClass2 = await diContainer.get(DiClass2)
     assert(diClass2.getTrue())
+})
+it('Must throw circular dependency error with DI initialization', async () => {
+    class LeftSide { public constructor(@Dependency('RightSide') protected rightSide: any) {} }
+    class RightSide { public constructor(@Dependency('LeftSide') protected leftSide: any) {} }
+    const newContainer = new Container(1000)
+    newContainer.add(LeftSide)
+    try {
+        await newContainer.addInplace(RightSide)
+    } catch (err) {
+        return assert(err.message.toLowerCase().indexOf('multiple attempts') >= 0)
+    }
+    assert.fail()
 })

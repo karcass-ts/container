@@ -1,51 +1,7 @@
 import 'reflect-metadata'
 import { dependenciesKeyName } from './Dependency'
+import { ContainerItem, CircularDependencyDetectionReason } from './ContainerItem'
 
-class ContainerItem<T> {
-    public instance?: any
-    public initializationStartTimestamp?: number
-
-    public constructor(
-        public key: (new (...args: any[]) => T)|string,
-        public initializer: () => T|Promise<T>,
-    ) {}
-
-    public get initializationDuration() {
-        return this.initializationStartTimestamp ? Date.now() - this.initializationStartTimestamp : 0
-    }
-
-    public get name() {
-        return typeof this.key === 'string' ? this.key : this.key.name
-    }
-
-    public async getInstance(maxWaitMs: number, timeoutCallback: () => Error) {
-        if (this.instance !== undefined) {
-            return this.instance
-        }
-        return this.instance = new Promise((resolve, reject) => {
-            try {
-                const obj = this.initializer()
-                if (obj instanceof Promise) {
-                    this.initializationStartTimestamp = Date.now()
-                    const timeout = setTimeout(() => {
-                        reject(timeoutCallback())
-                        this.initializationStartTimestamp = undefined
-                    }, maxWaitMs)
-
-                    obj.then(result => resolve(this.instance = result)).catch(reject).finally(() => {
-                        clearTimeout(timeout)
-                        this.initializationStartTimestamp = undefined
-                    })
-                } else {
-                    resolve(obj)
-                }
-            } catch (err) {
-                reject(err)
-            }
-        })
-    }
-
-}
 export class Container<ItemType extends any> {
     protected items: ContainerItem<ItemType>[] = []
 
@@ -102,9 +58,12 @@ export class Container<ItemType extends any> {
         if (!item) {
             throw new Error(`Item with key "${name}" not found`)
         }
-        return item.getInstance(this.maxItemInitializationDurationMs, () => {
-            const problems = this.items.filter(i => i.initializationDuration >= this.maxItemInitializationDurationMs * .9)
-            let message = `Too long ${name} initialization (> ${this.maxItemInitializationDurationMs}ms). `
+        return item.getInstance(this.maxItemInitializationDurationMs, (reason) => {
+            const problems = this.items
+                .filter(i => i.initializationDuration >= this.maxItemInitializationDurationMs * .9 || i.initializerCalls >= 2)
+            let message = reason === CircularDependencyDetectionReason.timeout ?
+                `Too long ${name} initialization (> ${this.maxItemInitializationDurationMs}ms). ` :
+                `Multiple attempts to initialize ${name}. `
             if (problems.length >= 2) {
                 message += `It may be circular dependency between ${problems.map(p => p.name).join(' and ')}`
             }
