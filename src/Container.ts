@@ -16,6 +16,14 @@ export class Container<ItemType extends any> {
             if (!(key instanceof Function)) {
                 throw new Error('If second parameter omitted, first parameter must be a constructor')
             }
+            const dependencies: string[]|undefined = Reflect.getMetadata(dependenciesKeyName, key)
+            const constructorParamsLength = key.length
+            const dependenciesLength = dependencies ? dependencies.length : 0
+            if (constructorParamsLength !== dependenciesLength) {
+                throw new Error(`The amount of the @Dependency decorator usages - ${dependenciesLength} in ${key.name} ` +
+                    `differs from its constructor arguments count - ${constructorParamsLength}. ` +
+                    'May be you have forgotten to add @Dependency decorator to some of constructor argument(s).')
+            }
             initializer = () => this.inject(key)
         }
         const name = typeof key === 'string' ? key : key.name

@@ -103,12 +103,22 @@ it('Must must work ok with DI', async () => {
 it('Must throw circular dependency error with DI initialization', async () => {
     class LeftSide { public constructor(@Dependency('RightSide') protected rightSide: any) {} }
     class RightSide { public constructor(@Dependency('LeftSide') protected leftSide: any) {} }
-    const newContainer = new Container(1000)
-    newContainer.add(LeftSide)
+    const diContainer = new Container(1000)
+    diContainer.add(LeftSide)
     try {
-        await newContainer.addInplace(RightSide)
+        await diContainer.addInplace(RightSide)
     } catch (err) {
         return assert(err.message.toLowerCase().indexOf('multiple attempts') >= 0)
+    }
+    assert.fail()
+})
+it('Must throw @Dependency amount differs from constructor arguments count error', async () => {
+    class TestClass { public constructor(arg1: string) { return arg1 } }
+    const diContainer = new Container()
+    try {
+        diContainer.add(TestClass)
+    } catch (err) {
+        return assert(err.message.toLowerCase().indexOf('decorator usages') >= 0)
     }
     assert.fail()
 })
