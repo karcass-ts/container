@@ -12,6 +12,10 @@ export class Container<ItemType extends any> {
     public add<T extends ItemType>(key: (new (...args: any[]) => T)|string, initializer: () => T|Promise<T>): void
 
     public add<T extends ItemType>(key: (new (...args: any[]) => T)|string, initializer?: () => T|Promise<T>) {
+        const name = typeof key === 'string' ? key : key.name
+        if (this.items.find(i => i.key === key)) {
+            throw new Error(`The item with name "${name}" already added before`)
+        }
         if (!initializer) {
             if (!(key instanceof Function)) {
                 throw new Error('If second parameter omitted, first parameter must be a constructor')
@@ -25,10 +29,6 @@ export class Container<ItemType extends any> {
                     'May be you have forgotten to add @Dependency decorator to some of constructor argument(s).')
             }
             initializer = () => this.inject(key)
-        }
-        const name = typeof key === 'string' ? key : key.name
-        if (name in this.items) {
-            throw new Error(`The item with name "${name}" already added before`)
         }
         this.items.push(new ContainerItem(key, initializer))
     }
@@ -66,7 +66,7 @@ export class Container<ItemType extends any> {
         if (!item) {
             throw new Error(`Item with key "${name}" not found`)
         }
-        return item.getInstance(this.maxItemInitializationDurationMs, (reason) => {
+        const result = await item.getInstance(this.maxItemInitializationDurationMs, (reason) => {
             const problems = this.items
                 .filter(i => i.initializationDuration >= this.maxItemInitializationDurationMs * .9 || i.initializerCalls >= 2)
             let message = reason === CircularDependencyDetectionReason.timeout ?
@@ -77,6 +77,11 @@ export class Container<ItemType extends any> {
             }
             return new Error(message)
         })
+        if (typeof key === 'function' && !(result instanceof key)) {
+            throw new Error(`The return value of ${key.name} initializer is not instance of ${key.name} but instance of ` +
+                `${'constructor' in result ? result.constructor.name : typeof result}`)
+        }
+        return result
     }
 
     public async getAll() {
