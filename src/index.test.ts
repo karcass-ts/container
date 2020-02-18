@@ -100,12 +100,13 @@ test('Must must work ok with DI', async () => {
     expect(diClass2.getTrue()).toStrictEqual(true)
 })
 test('Must throw circular dependency error with DI initialization', async () => {
-    class LeftSide { public constructor(@Dependency('RightSide') protected rightSide: any) {} }
-    class RightSide { public constructor(@Dependency('LeftSide') protected leftSide: any) {} }
+    const RightSideSymbol = Symbol('RightSide')
+    class LeftSide { public constructor(@Dependency(RightSideSymbol) protected rightSide: any) {} }
+    class RightSide { public constructor(@Dependency(LeftSide) protected leftSide: any) {} }
     const diContainer = new Container(1000)
-    diContainer.add(LeftSide)
+    diContainer.add(LeftSide, async () => new LeftSide(await diContainer.get(RightSideSymbol)))
     try {
-        await diContainer.addInplace(RightSide)
+        await diContainer.addInplace(RightSideSymbol, () => diContainer.inject(RightSide))
     } catch (err) {
         return expect(err.message.toLowerCase()).toMatch('multiple attempts')
     }
@@ -145,4 +146,14 @@ test('Must throw error about wrong return value of initializer', async () => {
         expect(err.message).toMatch('is not instance')
     }
     await diContainer.addInplace(TestClass2, () => new TestClass3())
+})
+test('Must throw error about insufficient Dependency decarator usage while inject method', async () => {
+    class TestClass1 { public constructor(protected someDependency: string) {} }
+    const diContainer = new Container
+    try {
+        await diContainer.inject(TestClass1)
+        fail()
+    } catch (err) {
+        expect(err.message).toMatch('differs from')
+    }
 })
